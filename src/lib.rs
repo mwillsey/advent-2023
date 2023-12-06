@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::{collections::HashMap, ops::Range, str::FromStr};
 
 pub fn load_file(filename: &str) -> String {
@@ -236,7 +237,7 @@ where
         .collect()
 }
 
-fn minmax<T: Ord>(a: T, b: T) -> (T, T) {
+pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) {
     if a < b {
         (a, b)
     } else {
@@ -371,7 +372,6 @@ fn day6() {
         let x = (b * b - 4.0 * a * c).sqrt();
         let sol1 = (-b + x) / (2.0 * a);
         let sol2 = (-b - x) / (2.0 * a);
-        println!("{} {} {} {}", sol1, sol2, sol1.floor(), sol2.ceil());
         sol2.floor() as u32 - sol1.ceil() as u32 + 1
     }
 
