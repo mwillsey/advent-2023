@@ -349,3 +349,47 @@ fn day5() {
     }
     assert_eq!(min_dest, 31161857);
 }
+
+#[test]
+fn day6() {
+    let input = load_file("6.txt");
+    let lines: Vec<String> = input.lines().map(|l| l.to_owned()).collect();
+    let times = num_vec::<f64>(lines[0].trim_start_matches("Time: "));
+    let dists = num_vec::<f64>(lines[1].trim_start_matches("Distance: "));
+    assert_eq!(times.len(), dists.len());
+
+    // dist = hold * (duration - hold)
+    // is maximized when hold = duration / 2
+    // 0 = hold * (duration - hold) - dist
+    // 0 = hold * duration - hold * hold - dist
+    // 0 = -hold^2 + hold * duration - dist
+    //
+    // solutions = (-b +- sqrt(b^2 - 4ac)) / 2a
+
+    fn ways_to_win(duration: f64, dist: f64) -> u32 {
+        let (a, b, c) = (-1.0, duration, -dist);
+        let x = (b * b - 4.0 * a * c).sqrt();
+        let sol1 = (-b + x) / (2.0 * a);
+        let sol2 = (-b - x) / (2.0 * a);
+        println!("{} {} {} {}", sol1, sol2, sol1.floor(), sol2.ceil());
+        sol2.floor() as u32 - sol1.ceil() as u32 + 1
+    }
+
+    let mut product = 1;
+    for (&duration, &dist) in times.iter().zip(&dists) {
+        product *= ways_to_win(duration, dist);
+    }
+
+    assert_eq!(product, 160816);
+
+    // part 2
+    let mut time_line = lines[0].clone();
+    time_line.retain(|c| c.is_ascii_digit());
+    let time = time_line.parse::<f64>().unwrap();
+
+    let mut dist_line = lines[1].clone();
+    dist_line.retain(|c| c.is_ascii_digit());
+    let dist = dist_line.parse::<f64>().unwrap();
+
+    assert_eq!(ways_to_win(time, dist), 46561107);
+}
