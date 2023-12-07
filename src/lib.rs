@@ -393,3 +393,45 @@ fn day6() {
 
     assert_eq!(ways_to_win(time, dist), 46561107);
 }
+
+#[test]
+fn day7() {
+    let input = load_file("7.txt");
+
+    fn do_it(input: &str, cards: &str, sort_counts: impl Fn(&mut [u32])) -> usize {
+        let mut hands = vec![];
+        for line in input.lines() {
+            let (hand, bid) = line.split_once(' ').unwrap();
+            let mut decoded_hand = [0; 5];
+            let mut counts = [0; 13];
+            for (ch, spot) in hand.chars().zip(&mut decoded_hand) {
+                let i = cards.find(ch).unwrap();
+                *spot = i;
+                counts[i] += 1;
+            }
+            sort_counts(&mut counts);
+            hands.push((counts, decoded_hand, bid.parse::<usize>().unwrap()));
+        }
+
+        hands.sort();
+
+        let mut total_winnings = 0;
+        for (i, (_counts, _hand, bid)) in hands.iter().enumerate() {
+            // println!("{:?} {:?} {:?}", counts, hand, bid);
+            total_winnings += (i + 1) * bid;
+        }
+        total_winnings
+    }
+
+    let part1 = do_it(&input, "23456789TJQKA", |counts| {
+        counts.sort_by(|a, b| b.cmp(a))
+    });
+    assert_eq!(part1, 250058342);
+
+    let part2 = do_it(&input, "J23456789TQKA", |counts| {
+        let jokers = std::mem::take(&mut counts[0]);
+        counts.sort_by(|a, b| b.cmp(a));
+        counts[0] += jokers;
+    });
+    assert_eq!(part2, 250506580);
+}
