@@ -1,4 +1,3 @@
-use std::sync::Arc;
 #[allow(unused_imports)]
 use std::{
     collections::hash_map::Entry,
@@ -11,6 +10,12 @@ pub fn load_file(filename: &str) -> String {
     std::fs::read_to_string(format!("inputs/{filename}"))
         .unwrap_or_else(|_err| panic!("Failed to read {}", filename))
 }
+
+pub enum Part {
+    Part1,
+    Part2,
+}
+pub use Part::*;
 
 #[test]
 fn day1() {
@@ -606,4 +611,31 @@ fn day8() {
     }
 
     assert_eq!(t, 11188774513823);
+}
+
+#[test]
+fn day9() {
+    let input = load_file("9.txt");
+    let mut lines = input.lines();
+
+    fn estimate(nums: &[i64], part: Part) -> i64 {
+        if nums.iter().all(|&n| n == 0) {
+            return 0;
+        }
+        let next: Vec<i64> = nums.windows(2).map(|w| w[1] - w[0]).collect();
+        match part {
+            Part1 => nums[nums.len() - 1] + estimate(&next, part),
+            Part2 => nums[0] - estimate(&next, part),
+        }
+    }
+
+    let (mut part1, mut part2) = (0, 0);
+    for line in &mut lines {
+        let nums = num_vec::<i64>(line);
+        part1 += estimate(&nums, Part1);
+        part2 += estimate(&nums, Part2);
+    }
+
+    assert_eq!(part1, 1898776583);
+    assert_eq!(part2, 1100);
 }
