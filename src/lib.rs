@@ -17,16 +17,22 @@ pub enum Part {
 }
 pub use Part::*;
 
+#[allow(unused_macros)]
+macro_rules! v {
+    (@iter $e:expr, for $p:pat in $l:expr $(, if $f:expr)?) => {{
+        #[allow(unused_variables)]
+        let x = $l.into_iter() $(.filter(|$p| $f))? .map(|$p| $e); x
+    }};
+    (@set $($rest:tt)*) => { v!(@iter $($rest)*).collect::<HashSet<_>>() };
+    (     $($rest:tt)*) => { v!(@iter $($rest)*).collect::<Vec<_>>() };
+}
+
 #[test]
 fn day1() {
     let input = load_file("1.txt");
     let mut sum = 0;
     for line in input.lines() {
-        let mut digits = line
-            .as_bytes()
-            .iter()
-            .filter(|c| c.is_ascii_digit())
-            .map(|c| c - b'0'); // convert from ascii
+        let mut digits = v![@iter c - b'0', for c in line.as_bytes(), if c.is_ascii_digit()];
         let first = digits.next().unwrap();
         let last = digits.last().unwrap_or(first);
         let n = (first as u32) * 10 + last as u32;
@@ -193,11 +199,10 @@ fn day3() {
         }
     }
 
-    let ratios = gears
-        .values()
-        .filter(|ps| ps.len() == 2)
-        .map(|ps| ps[0].num * ps[1].num)
-        .sum::<u32>();
+    let ratios = Iterator::sum::<u32>(v![@iter
+        ps[0].num * ps[1].num,
+        for ps in gears.values(), if ps.len() == 2
+    ]);
 
     assert_eq!(ratios, 80253814);
 }
@@ -205,20 +210,13 @@ fn day3() {
 #[test]
 fn day4() {
     let input = load_file("4.txt");
-    let nums_set = |s: &str| {
-        s.split_whitespace()
-            .map(|n| n.trim().parse::<u32>().unwrap())
-            .collect::<std::collections::HashSet<_>>()
-    };
+    let nums_set = |s: &str| num_vec::<usize>(s).into_iter().collect::<HashSet<_>>();
 
-    let n_winners: Vec<usize> = input
-        .lines()
-        .map(|line| {
-            let (_card_num, line) = line.split_once(": ").unwrap();
-            let (winners, have) = line.split_once(" | ").unwrap();
-            nums_set(winners).intersection(&nums_set(have)).count()
-        })
-        .collect();
+    let n_winners: Vec<usize> = v![{
+        let (_card_num, line) = line.split_once(": ").unwrap();
+        let (winners, have) = line.split_once(" | ").unwrap();
+        nums_set(winners).intersection(&nums_set(have)).count()
+    }, for line in input.lines()];
 
     let mut points = 0;
     for &n in &n_winners {
@@ -238,14 +236,9 @@ fn day4() {
     assert_eq!(copies.iter().sum::<u32>(), 10212704);
 }
 
-pub fn num_vec<T>(s: &str) -> Vec<T>
-where
-    T: FromStr,
-    T::Err: std::fmt::Debug,
-{
-    s.split_whitespace()
-        .map(|n| n.trim().parse::<T>().unwrap())
-        .collect()
+pub fn num_vec<T: FromStr>(s: &str) -> Vec<T> {
+    let fail = |_| panic!("Failed to parse {}", s);
+    v![n.parse::<T>().unwrap_or_else(fail), for n in s.split_whitespace()]
 }
 
 pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) {
@@ -365,7 +358,7 @@ fn day5() {
 #[test]
 fn day6() {
     let input = load_file("6.txt");
-    let lines: Vec<String> = input.lines().map(|l| l.to_owned()).collect();
+    let lines: Vec<String> = v![l.to_owned(), for l in input.lines()];
     let times = num_vec::<f64>(lines[0].trim_start_matches("Time: "));
     let dists = num_vec::<f64>(lines[1].trim_start_matches("Distance: "));
     assert_eq!(times.len(), dists.len());
@@ -524,7 +517,7 @@ fn day8() {
 
     // part 2
 
-    let starting_nodes: Vec<Node> = map.keys().filter(|n| n[2] == b'A').copied().collect();
+    let starting_nodes: Vec<Node> = v![*n, for n in map.keys(), if n[2] == b'A'];
 
     struct CycleInfo {
         cycle_start: usize,
@@ -554,10 +547,7 @@ fn day8() {
                 Entry::Vacant(e) => e.insert(t),
                 Entry::Occupied(e) => {
                     let cycle_start = *e.get();
-                    let success_times: Vec<usize> = seen
-                        .iter()
-                        .filter_map(|((_i, node), time)| (node[2] == b'Z').then_some(*time))
-                        .collect();
+                    let success_times = v![*t, for ((_i, node), t) in &seen, if node[2] == b'Z'];
                     assert_eq!(success_times.len(), 1);
                     return CycleInfo {
                         cycle_start,
@@ -594,11 +584,7 @@ fn day8() {
     let mut done = vec![false; starting_nodes.len()];
     let mut t = 0;
     while !done.iter().all(|&d| d) {
-        let done_cycle_lens = cycles
-            .iter()
-            .zip(&done)
-            .filter_map(|(cycle, done)| done.then_some(cycle.cycle_len))
-            .collect::<Vec<_>>();
+        let done_cycle_lens = v![c.cycle_len, for (c, d) in cycles.iter().zip(&done), if **d];
         t += lcm(&done_cycle_lens);
 
         for (cycle, cycle_done) in cycles.iter_mut().zip(&mut done) {
@@ -622,7 +608,7 @@ fn day9() {
         if nums.iter().all(|&n| n == 0) {
             return 0;
         }
-        let next: Vec<i64> = nums.windows(2).map(|w| w[1] - w[0]).collect();
+        let next: Vec<i64> = v![w[1] - w[0], for w in nums.windows(2)];
         match part {
             Part1 => nums[nums.len() - 1] + estimate(&next, part),
             Part2 => nums[0] - estimate(&next, part),
