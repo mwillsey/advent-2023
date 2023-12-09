@@ -1,5 +1,11 @@
+use std::sync::Arc;
 #[allow(unused_imports)]
-use std::{collections::HashMap, ops::Range, str::FromStr};
+use std::{
+    collections::hash_map::Entry,
+    collections::{HashMap, HashSet},
+    ops::Range,
+    str::FromStr,
+};
 
 pub fn load_file(filename: &str) -> String {
     std::fs::read_to_string(format!("inputs/{filename}"))
@@ -434,4 +440,170 @@ fn day7() {
         counts[0] += jokers;
     });
     assert_eq!(part2, 250506580);
+}
+
+pub fn lcm(ns: &[usize]) -> usize {
+    let mut ns = ns.to_owned();
+    let mut factors = vec![];
+    for i in 2.. {
+        let mut keep_going = true;
+        while keep_going {
+            keep_going = false;
+            for n in &mut ns {
+                if *n % i == 0 {
+                    *n /= i;
+                    if !keep_going {
+                        factors.push(i);
+                        keep_going = true;
+                    }
+                }
+            }
+        }
+        if ns.iter().all(|&n| n == 1) {
+            break;
+        }
+    }
+
+    factors.iter().product::<usize>()
+}
+
+#[test]
+fn lcm_test() {
+    assert_eq!(lcm(&[2, 3, 4]), 12);
+    assert_eq!(lcm(&[4]), 4);
+    assert_eq!(lcm(&[]), 1);
+}
+
+#[test]
+fn day8() {
+    let input = load_file("8.txt");
+    let mut lines = input.lines();
+    let directions = lines.next().unwrap();
+    assert!(lines.next().unwrap().is_empty());
+
+    type Node = [u8; 3];
+    let mut map = HashMap::<Node, (Node, Node)>::new();
+
+    for line in lines {
+        // XKM = (FRH, RLM)
+        let bytes = line.as_bytes();
+        let src = bytes[0..3].try_into().unwrap();
+        let left = bytes[7..10].try_into().unwrap();
+        let right = bytes[12..15].try_into().unwrap();
+        map.insert(src, (left, right));
+    }
+
+    let do_step = |node: Node, direction: char| -> Node {
+        let (left, right) = map[&node];
+        match direction {
+            'L' => left,
+            'R' => right,
+            _ => panic!("Unknown direction {}", direction),
+        }
+    };
+
+    let trace = |mut location| {
+        let mut num_steps = 0;
+        loop {
+            for step in directions.chars() {
+                num_steps += 1;
+                location = do_step(location, step);
+                if location == [b'Z'; 3] {
+                    return num_steps;
+                }
+            }
+        }
+    };
+
+    assert_eq!(trace([b'A'; 3]), 22411);
+
+    // part 2
+
+    let starting_nodes: Vec<Node> = map.keys().filter(|n| n[2] == b'A').copied().collect();
+
+    struct CycleInfo {
+        cycle_start: usize,
+        cycle_len: usize,
+        success_time: usize,
+    }
+
+    impl CycleInfo {
+        fn is_done(&self, time: usize) -> bool {
+            if time < self.success_time {
+                return false;
+            }
+            let success_cycle_time = self.success_time - self.cycle_start;
+            let cycle_time = time - self.cycle_start;
+            (cycle_time % self.cycle_len) == success_cycle_time
+        }
+    }
+
+    let compute_cycle = |start: Node| -> CycleInfo {
+        //                       path_i, loc,  total_steps
+        let mut seen = HashMap::<(usize, Node), usize>::new();
+        let mut location = start;
+        let mut path = directions.char_indices().cycle();
+        for t in 0.. {
+            let (i, step) = path.next().unwrap();
+            match seen.entry((i, location)) {
+                Entry::Vacant(e) => e.insert(t),
+                Entry::Occupied(e) => {
+                    let cycle_start = *e.get();
+                    let success_times: Vec<usize> = seen
+                        .iter()
+                        .filter_map(|((_i, node), time)| (node[2] == b'Z').then_some(*time))
+                        .collect();
+                    assert_eq!(success_times.len(), 1);
+                    return CycleInfo {
+                        cycle_start,
+                        cycle_len: t - cycle_start,
+                        success_time: success_times[0],
+                    };
+                }
+            };
+            location = do_step(location, step);
+        }
+        panic!();
+    };
+
+    let trace_until_time = |mut location, stop_time: usize| {
+        let mut path = directions.chars().cycle();
+        for _ in 0..stop_time {
+            location = do_step(location, path.next().unwrap());
+        }
+        location
+    };
+
+    let mut cycles = vec![];
+    for &start in &starting_nodes {
+        let cycle = compute_cycle(start);
+        assert_eq!(trace_until_time(start, cycle.success_time)[2] as char, 'Z');
+        assert_eq!(
+            trace_until_time(start, cycle.success_time),
+            trace_until_time(start, cycle.success_time + cycle.cycle_len),
+        );
+        assert!(cycle.is_done(cycle.success_time));
+        cycles.push(cycle);
+    }
+
+    let mut done = vec![false; starting_nodes.len()];
+    let mut t = 0;
+    while !done.iter().all(|&d| d) {
+        let done_cycle_lens = cycles
+            .iter()
+            .zip(&done)
+            .filter_map(|(cycle, done)| done.then_some(cycle.cycle_len))
+            .collect::<Vec<_>>();
+        t += lcm(&done_cycle_lens);
+
+        for (cycle, cycle_done) in cycles.iter_mut().zip(&mut done) {
+            *cycle_done = cycle.is_done(t);
+        }
+    }
+
+    for cycle in &cycles {
+        assert!(cycle.is_done(t));
+    }
+
+    assert_eq!(t, 11188774513823);
 }
