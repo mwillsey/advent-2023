@@ -625,3 +625,79 @@ fn day09() {
     assert_eq!(part1, 1898776583);
     assert_eq!(part2, 1100);
 }
+
+#[test]
+fn day10() {
+    let input = load_file("10.txt");
+    //     let input = "7-F7-
+    // .FJ|7
+    // SJLL7
+    // |F--J
+    // LJ.LJ";
+    //     let input = ".....
+    // .S-7.
+    // .|.|.
+    // .L-J.
+    // .....";
+    let mut start = (0, 0);
+    type Point = (i32, i32);
+    let mut graph = HashMap::<Point, (char, Vec<Point>)>::new();
+    for (y, line) in input.lines().enumerate() {
+        for (x, ch) in line.char_indices() {
+            let (y, x) = (y as i32, x as i32);
+            let nbrs = match ch {
+                'S' => {
+                    start = (y, x);
+                    vec![]
+                }
+                '|' => vec![(y - 1, x), (y + 1, x)],
+                '-' => vec![(y, x - 1), (y, x + 1)],
+                '7' => vec![(y + 1, x), (y, x - 1)],
+                'L' => vec![(y - 1, x), (y, x + 1)],
+                'F' => vec![(y + 1, x), (y, x + 1)],
+                'J' => vec![(y - 1, x), (y, x - 1)],
+                '.' => vec![],
+                _ => panic!("Unknown char {}", ch),
+            };
+            graph.insert((y, x), (ch, nbrs));
+        }
+    }
+
+    let mut dist = HashMap::<Point, usize>::new();
+    dist.insert(start, 0);
+    let mut todo = vec![
+        (start.0 - 1, start.1),
+        (start.0 + 1, start.1),
+        (start.0, start.1 - 1),
+        (start.0, start.1 + 1),
+    ];
+
+    let big = graph.len() + 1;
+
+    while let Some(node) = todo.pop() {
+        let Some((_ch, nbrs)) = graph.get(&node) else {
+            continue;
+        };
+        let min = nbrs
+            .iter()
+            .map(|nbr| dist.get(nbr).copied().unwrap_or(big))
+            .min()
+            .unwrap_or(big);
+        let d = dist.entry(node).or_insert(big);
+        if min + 1 < *d {
+            *d = min + 1;
+            todo.extend(nbrs);
+        }
+    }
+
+    for pt in graph.keys() {
+        if let Some(d) = dist.get(pt) {
+            if d < &big {
+                println!("{pt:?} {d}");
+            }
+        }
+    }
+
+    let furthest = dist.values().copied().filter(|&d| d < big).max().unwrap();
+    assert_eq!(furthest, 7145);
+}
