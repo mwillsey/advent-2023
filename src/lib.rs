@@ -28,8 +28,8 @@ macro_rules! v {
 }
 
 #[test]
-fn day1() {
-    let input = load_file("1.txt");
+fn day01() {
+    let input = load_file("01.txt");
     let mut sum = 0;
     for line in input.lines() {
         let mut digits = v![@iter c - b'0', for c in line.as_bytes(), if c.is_ascii_digit()];
@@ -72,8 +72,8 @@ fn day1() {
 }
 
 #[test]
-fn day2() {
-    let input = load_file("2.txt");
+fn day02() {
+    let input = load_file("02.txt");
     let mut possible = vec![]; // part 1
     let mut sum_power = 0; // part 2
     for line in input.lines() {
@@ -118,8 +118,8 @@ fn day2() {
 }
 
 #[test]
-fn day3() {
-    let input = load_file("3.txt");
+fn day03() {
+    let input = load_file("03.txt");
     let lines = input.lines().collect::<Vec<_>>();
 
     let is_symbol = |y: usize, x: usize| -> bool {
@@ -208,8 +208,8 @@ fn day3() {
 }
 
 #[test]
-fn day4() {
-    let input = load_file("4.txt");
+fn day04() {
+    let input = load_file("04.txt");
     let nums_set = |s: &str| num_vec::<usize>(s).into_iter().collect::<HashSet<_>>();
 
     let n_winners: Vec<usize> = v![{
@@ -250,8 +250,8 @@ pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) {
 }
 
 #[test]
-fn day5() {
-    let input = load_file("5.txt");
+fn day05() {
+    let input = load_file("05.txt");
     let mut lines = input.lines();
 
     let line = lines.next().unwrap();
@@ -356,8 +356,8 @@ fn day5() {
 }
 
 #[test]
-fn day6() {
-    let input = load_file("6.txt");
+fn day06() {
+    let input = load_file("06.txt");
     let lines: Vec<String> = v![l.to_owned(), for l in input.lines()];
     let times = num_vec::<f64>(lines[0].trim_start_matches("Time: "));
     let dists = num_vec::<f64>(lines[1].trim_start_matches("Distance: "));
@@ -399,8 +399,8 @@ fn day6() {
 }
 
 #[test]
-fn day7() {
-    let input = load_file("7.txt");
+fn day07() {
+    let input = load_file("07.txt");
 
     fn do_it(input: &str, cards: &str, sort_counts: impl Fn(&mut [u32])) -> usize {
         let mut hands = vec![];
@@ -473,8 +473,8 @@ fn lcm_test() {
 }
 
 #[test]
-fn day8() {
-    let input = load_file("8.txt");
+fn day08() {
+    let input = load_file("08.txt");
     let mut lines = input.lines();
     let directions = lines.next().unwrap();
     assert!(lines.next().unwrap().is_empty());
@@ -600,8 +600,8 @@ fn day8() {
 }
 
 #[test]
-fn day9() {
-    let input = load_file("9.txt");
+fn day09() {
+    let input = load_file("09.txt");
     let mut lines = input.lines();
 
     fn estimate(nums: &[i64], part: Part) -> i64 {
