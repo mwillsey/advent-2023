@@ -629,16 +629,6 @@ fn day09() {
 #[test]
 fn day10() {
     let input = load_file("10.txt");
-    //     let input = "7-F7-
-    // .FJ|7
-    // SJLL7
-    // |F--J
-    // LJ.LJ";
-    //     let input = ".....
-    // .S-7.
-    // .|.|.
-    // .L-J.
-    // .....";
     let mut start = (0, 0);
     type Point = (i32, i32);
     let mut graph = HashMap::<Point, (char, Vec<Point>)>::new();
@@ -663,41 +653,69 @@ fn day10() {
         }
     }
 
-    let mut dist = HashMap::<Point, usize>::new();
-    dist.insert(start, 0);
-    let mut todo = vec![
+    let find_cycle = |mut from: Point, mut to: Point| {
+        let mut seen = HashSet::<Point>::new();
+        loop {
+            seen.insert(from);
+
+            let Some((_ch, nbrs)) = graph.get(&to) else {
+                return None;
+            };
+
+            let nbrs = v![*nbr, for nbr in nbrs, if **nbr != from];
+            if nbrs.len() != 1 {
+                return None;
+            }
+
+            if nbrs[0] == start {
+                seen.insert(to);
+                return Some(seen);
+            }
+            from = to;
+            to = nbrs[0];
+        }
+    };
+
+    let start_nbrs = [
         (start.0 - 1, start.1),
         (start.0 + 1, start.1),
         (start.0, start.1 - 1),
         (start.0, start.1 + 1),
     ];
 
-    let big = graph.len() + 1;
+    let cycle = start_nbrs
+        .iter()
+        .filter(|s| graph[&s].1.contains(&start))
+        .flat_map(|&s| find_cycle(start, s))
+        .next()
+        .unwrap();
 
-    while let Some(node) = todo.pop() {
-        let Some((_ch, nbrs)) = graph.get(&node) else {
-            continue;
-        };
-        let min = nbrs
-            .iter()
-            .map(|nbr| dist.get(nbr).copied().unwrap_or(big))
-            .min()
-            .unwrap_or(big);
-        let d = dist.entry(node).or_insert(big);
-        if min + 1 < *d {
-            *d = min + 1;
-            todo.extend(nbrs);
-        }
-    }
+    let furthest = cycle.len() / 2;
+    assert_eq!(furthest, 7145);
 
-    for pt in graph.keys() {
-        if let Some(d) = dist.get(pt) {
-            if d < &big {
-                println!("{pt:?} {d}");
+    // part 2
+
+    let mut n_in_loop = 0;
+    for (y, line) in input.lines().enumerate() {
+        let mut in_loop = false;
+        let mut bend = 'X';
+        for (x, mut ch) in line.char_indices() {
+            let (y, x) = (y as i32, x as i32);
+            if !cycle.contains(&(y, x)) {
+                ch = '.';
+            }
+
+            match (bend, ch) {
+                (_, '|') => in_loop = !in_loop,
+                (_, '-') => (),
+                (_, 'L' | 'F') => bend = ch,
+                ('L', '7') => in_loop = !in_loop,
+                ('F', 'J') => in_loop = !in_loop,
+                (_, '.') => n_in_loop += in_loop as usize,
+                _ => (),
             }
         }
     }
 
-    let furthest = dist.values().copied().filter(|&d| d < big).max().unwrap();
-    assert_eq!(furthest, 7145);
+    assert_eq!(n_in_loop, 445);
 }
