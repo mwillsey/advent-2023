@@ -719,3 +719,42 @@ fn day10() {
 
     assert_eq!(n_in_loop, 445);
 }
+
+#[test]
+fn day11() {
+    let input = load_file("11.txt");
+    let height = input.lines().count();
+    let width = input.lines().next().unwrap().len();
+
+    let mut points = vec![];
+
+    for (y, line) in input.lines().enumerate() {
+        for (x, ch) in line.char_indices() {
+            if ch == '#' {
+                points.push((y, x));
+            }
+        }
+    }
+
+    let empty_ys = v![y, for y in 0..height, if points.iter().all(|&(y2, _)| *y != y2)];
+    let empty_xs = v![x, for x in 0..width,  if points.iter().all(|&(_, x2)| *x != x2)];
+
+    let between = |a: usize, b, c| a <= b && b <= c || c <= b && b <= a;
+
+    let mut sum_distance = 0;
+    let mut extra_distance = 0;
+    for i in 0..points.len() {
+        for j in i + 1..points.len() {
+            let (y1, x1) = points[i];
+            let (y2, x2) = points[j];
+            sum_distance += y1.abs_diff(y2) + x1.abs_diff(x2);
+            extra_distance += empty_ys.iter().filter(|&&y| between(y1, y, y2)).count();
+            extra_distance += empty_xs.iter().filter(|&&x| between(x1, x, x2)).count();
+        }
+    }
+
+    assert_eq!(sum_distance + extra_distance, 9536038);
+
+    // part 2
+    assert_eq!(sum_distance + 999_999 * extra_distance, 447744640566);
+}
