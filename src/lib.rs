@@ -758,3 +758,71 @@ fn day11() {
     // part 2
     assert_eq!(sum_distance + 999_999 * extra_distance, 447744640566);
 }
+
+#[test]
+fn day12() {
+    let input = "
+???.### 1,1,3
+.??..??...?##. 1,1,3
+?#?#?#?#?#?#?#? 1,3,1,6
+????.#...#... 4,1,1
+????.######..#####. 1,6,5
+?###???????? 3,2,1"
+        .trim();
+    let input = load_file("12.txt");
+
+    fn is_valid(line: &[u8], mut ns: &[usize]) -> bool {
+        let mut run = 0;
+        for &b in line {
+            if b == b'#' {
+                run += 1;
+            } else {
+                if run > 0 {
+                    if ns.is_empty() || run != ns[0] {
+                        return false;
+                    }
+                    ns = &ns[1..];
+                }
+                run = 0;
+            }
+        }
+
+        if run > 0 {
+            ns == [run]
+        } else {
+            ns.is_empty()
+        }
+    }
+
+    fn count(initial_line: &[u8], ns: &[usize]) -> usize {
+        let mut possible = vec![initial_line.to_owned()];
+        for i in 0..initial_line.len() {
+            let mut new_possible = vec![];
+            for line in possible.drain(..) {
+                if line[i] == b'?' {
+                    let (mut line1, mut line2) = (line.to_owned(), line);
+                    line1[i] = b'.';
+                    line2[i] = b'#';
+                    new_possible.extend([line1, line2]);
+                } else {
+                    new_possible.push(line);
+                }
+            }
+            std::mem::swap(&mut possible, &mut new_possible);
+        }
+
+        possible.retain(|line| is_valid(line, ns));
+
+        possible.len()
+    }
+
+    let mut sum = 0;
+    for line in input.lines() {
+        let (line, nums) = line.split_once(' ').unwrap();
+        let nums = v![n.parse::<usize>().unwrap(), for n in nums.split(',')];
+        let count = count(line.as_bytes(), &nums);
+        sum += count;
+    }
+
+    assert_eq!(sum, 21);
+}
