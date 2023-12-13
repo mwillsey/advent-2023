@@ -857,28 +857,35 @@ fn day12() {
 
 #[test]
 fn day13() {
-    let input = "#.##..##.
-..#.##.#.
-##......#
-##......#
-..#.##.#.
-..##..##.
-#.#.##.#.
-
-#...##..#
-#....#..#
-..##..###
-#####.##.
-#####.##.
-..##..###
-#....#..#";
     let input = load_file("13.txt");
 
-    let mut sum = 0;
-    for problem_str in input.split("\n\n") {
-        let problem = v![l.as_bytes().to_owned(), for l in problem_str.lines()];
-        sum += solve(&problem);
-        sum += 100 * solve(&transpose(&problem));
+    let (mut part1, mut part2) = (0, 0);
+    for grid_str in input.split("\n\n") {
+        let grid = &mut v![l.as_bytes().to_owned(), for l in grid_str.lines()];
+        let (v, h) = (solve(grid, &[]), solve(&transpose(grid), &[]));
+        part1 += v + 100 * h;
+
+        'part2: for y in 0..grid.len() {
+            for x in 0..grid[0].len() {
+                flip(&mut grid[y], x);
+                let (v2, h2) = (solve(grid, &[v]), solve(&transpose(grid), &[h]));
+                if v2 > 0 || h2 > 0 {
+                    part2 += v2 + 100 * h2;
+                    break 'part2;
+                }
+                flip(&mut grid[y], x);
+            }
+        }
+    }
+    assert_eq!(part1, 37113);
+    assert_eq!(part2, 30449);
+
+    fn flip(line: &mut [u8], i: usize) {
+        line[i] = match line[i] {
+            b'.' => b'#',
+            b'#' => b'.',
+            _ => panic!(),
+        }
     }
 
     fn is_sym(line: &[u8], i: usize) -> bool {
@@ -886,23 +893,18 @@ fn day13() {
         before.iter().rev().zip(after).all(|(a, b)| a == b)
     }
 
-    fn transpose(problem: &[Vec<u8>]) -> Vec<Vec<u8>> {
-        let mut transposed = vec![vec![]; problem[0].len()];
-        for line in problem {
-            for (i, &ch) in line.iter().enumerate() {
-                transposed[i].push(ch);
-            }
-        }
-        transposed
+    fn transpose(v: &[Vec<u8>]) -> Vec<Vec<u8>> {
+        (0..v[0].len())
+            .map(|col| v.iter().map(|row| row[col]).collect::<Vec<_>>())
+            .collect()
     }
 
-    fn solve(problem: &[Vec<u8>]) -> usize {
-        let mut possible: HashSet<usize> = (1..problem[0].len()).collect();
-        for line in problem {
+    fn solve(grid: &[Vec<u8>], invalid: &[usize]) -> usize {
+        let mut possible: HashSet<usize> = (1..grid[0].len()).collect();
+        possible.retain(|&i| !invalid.contains(&i));
+        for line in grid {
             possible.retain(|i| is_sym(line, *i));
         }
-        possible.into_iter().next().unwrap_or(0)
+        possible.into_iter().sum()
     }
-
-    assert_eq!(sum, 158);
 }
