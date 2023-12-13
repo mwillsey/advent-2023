@@ -854,3 +854,55 @@ fn day12() {
     assert_eq!(part1, 7204);
     assert_eq!(part2, 1672318386674);
 }
+
+#[test]
+fn day13() {
+    let input = "#.##..##.
+..#.##.#.
+##......#
+##......#
+..#.##.#.
+..##..##.
+#.#.##.#.
+
+#...##..#
+#....#..#
+..##..###
+#####.##.
+#####.##.
+..##..###
+#....#..#";
+    let input = load_file("13.txt");
+
+    let mut sum = 0;
+    for problem_str in input.split("\n\n") {
+        let problem = v![l.as_bytes().to_owned(), for l in problem_str.lines()];
+        sum += solve(&problem);
+        sum += 100 * solve(&transpose(&problem));
+    }
+
+    fn is_sym(line: &[u8], i: usize) -> bool {
+        let (before, after) = line.split_at(i);
+        before.iter().rev().zip(after).all(|(a, b)| a == b)
+    }
+
+    fn transpose(problem: &[Vec<u8>]) -> Vec<Vec<u8>> {
+        let mut transposed = vec![vec![]; problem[0].len()];
+        for line in problem {
+            for (i, &ch) in line.iter().enumerate() {
+                transposed[i].push(ch);
+            }
+        }
+        transposed
+    }
+
+    fn solve(problem: &[Vec<u8>]) -> usize {
+        let mut possible: HashSet<usize> = (1..problem[0].len()).collect();
+        for line in problem {
+            possible.retain(|i| is_sym(line, *i));
+        }
+        possible.into_iter().next().unwrap_or(0)
+    }
+
+    assert_eq!(sum, 158);
+}
