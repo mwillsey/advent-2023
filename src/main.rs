@@ -1,10 +1,37 @@
-#[allow(unused_imports)]
 use std::{
     collections::hash_map::Entry,
     collections::{HashMap, HashSet},
+    io::Write,
     ops::Range,
     str::FromStr,
+    time::Instant,
 };
+
+pub fn main() {
+    let days = [
+        day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
+        day11, day12, day13,
+    ];
+    let args: Vec<usize> = std::env::args()
+        .skip(1)
+        .map(|s| s.parse().unwrap())
+        .collect();
+
+    let mut total = 0.0;
+    for (i, day) in days.iter().enumerate() {
+        if !args.is_empty() && !args.contains(&(i + 1)) {
+            continue;
+        }
+        print!("day{:02}...", i + 1);
+        std::io::stdout().flush().unwrap();
+        let start = Instant::now();
+        day();
+        let time = start.elapsed().as_secs_f32();
+        total += time;
+        println!("\rday{:02}: {time:.6}", i + 1,);
+    }
+    println!("total: {:.6}", total);
+}
 
 pub fn load_file(filename: &str) -> String {
     std::fs::read_to_string(format!("inputs/{filename}"))
@@ -27,7 +54,6 @@ macro_rules! v {
     (     $($rest:tt)*) => { v!(@iter $($rest)*).collect::<Vec<_>>() };
 }
 
-#[test]
 fn day01() {
     let input = load_file("01.txt");
     let mut sum = 0;
@@ -71,13 +97,11 @@ fn day01() {
     assert_eq!(sum, 54277);
 }
 
-#[test]
 fn day02() {
     let input = load_file("02.txt");
     let mut possible = vec![]; // part 1
     let mut sum_power = 0; // part 2
     for line in input.lines() {
-        println!("{line}");
         let (game, rounds) = line.split_once(": ").unwrap();
         let game_id = game.split_once(' ').unwrap().1.parse::<u32>().unwrap();
         let mut rgbs = vec![];
@@ -94,7 +118,6 @@ fn day02() {
                 };
                 rgb[i] += count;
             }
-            println!("{rgb:?}");
             rgbs.push(rgb);
         }
 
@@ -117,7 +140,6 @@ fn day02() {
     assert_eq!(sum_power, 56322);
 }
 
-#[test]
 fn day03() {
     let input = load_file("03.txt");
     let lines = input.lines().collect::<Vec<_>>();
@@ -207,7 +229,6 @@ fn day03() {
     assert_eq!(ratios, 80253814);
 }
 
-#[test]
 fn day04() {
     let input = load_file("04.txt");
     let nums_set = |s: &str| num_vec::<usize>(s).into_iter().collect::<HashSet<_>>();
@@ -249,7 +270,6 @@ pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) {
     }
 }
 
-#[test]
 fn day05() {
     let input = load_file("05.txt");
     let mut lines = input.lines();
@@ -355,7 +375,6 @@ fn day05() {
     assert_eq!(min_dest, 31161857);
 }
 
-#[test]
 fn day06() {
     let input = load_file("06.txt");
     let lines: Vec<String> = v![l.to_owned(), for l in input.lines()];
@@ -398,7 +417,6 @@ fn day06() {
     assert_eq!(ways_to_win(time, dist), 46561107);
 }
 
-#[test]
 fn day07() {
     let input = load_file("07.txt");
 
@@ -472,7 +490,6 @@ fn lcm_test() {
     assert_eq!(lcm(&[]), 1);
 }
 
-#[test]
 fn day08() {
     let input = load_file("08.txt");
     let mut lines = input.lines();
@@ -599,7 +616,6 @@ fn day08() {
     assert_eq!(t, 11188774513823);
 }
 
-#[test]
 fn day09() {
     let input = load_file("09.txt");
     let mut lines = input.lines();
@@ -626,7 +642,6 @@ fn day09() {
     assert_eq!(part2, 1100);
 }
 
-#[test]
 fn day10() {
     let input = load_file("10.txt");
     let mut start = (0, 0);
@@ -720,7 +735,6 @@ fn day10() {
     assert_eq!(n_in_loop, 445);
 }
 
-#[test]
 fn day11() {
     let input = load_file("11.txt");
     let height = input.lines().count();
@@ -759,103 +773,64 @@ fn day11() {
     assert_eq!(sum_distance + 999_999 * extra_distance, 447744640566);
 }
 
-#[test]
 fn day12() {
-    let input = "
-???.### 1,1,3
-.??..??...?##. 1,1,3
-?#?#?#?#?#?#?#? 1,3,1,6
-????.#...#... 4,1,1
-????.######..#####. 1,6,5
-?###???????? 3,2,1"
-        .trim();
     let input = load_file("12.txt");
 
-    type Memo<'a> = HashMap<(&'a str, &'a [usize]), usize>;
-
-    fn count<'a>(memo: &mut Memo<'a>, line: &'a str, ns: &'a [usize]) -> usize {
+    fn count(line: &str, ns: &[usize]) -> usize {
         let line = line.trim_matches('.');
 
-        // if let Some(&result) = memo.get(&(line, ns)) {
-        //     return result;
-        // }
-        // if ns.len() == 1 && ns[0] == line.len() {
-        //     return (line.len() == ns[0] && line.chars().all(|b| b != '.')) as usize;
-        // }
+        type State = (Option<usize>, usize); // munch, ns_index
+        let mut states: HashMap<State, usize> = HashMap::new();
+        states.insert((None, 0), 1);
 
-        if ns.is_empty() {
-            return line.chars().all(|b| b != '#') as usize;
-        }
-
-        if line.len() + 1 < ns.iter().sum::<usize>() + ns.len() {
-            return 0;
-        }
-
-        let (ns1, ns2) = ns.split_at(ns.len() / 2);
-        let (n, ns2) = ns2.split_first().unwrap();
-        let mut sum = 0;
-
-        let get_char = |i: usize| line.as_bytes().get(i).map(|&b| b as char);
-        let is_chunk = |i: usize| {
-            line.get(i..i + n)
-                .map(|s| s.chars().all(|c| c != '.'))
-                .unwrap_or(false)
-                && get_char(i + n) != Some('#')
-        };
-        fn mul(x: usize, y: impl FnOnce() -> usize) -> usize {
-            (x > 0).then(|| x * y()).unwrap_or(0)
-        }
-
-        for (i, ch) in line.char_indices() {
-            let prev_i = i.wrapping_sub(1); // rely on overflow
-            let prev_char = get_char(prev_i).unwrap_or('.');
-            if let ('.' | '?', '?' | '#') = (prev_char, ch) {
-                if is_chunk(i) {
-                    let prefix = line.get(..i.wrapping_sub(1)).unwrap_or("");
-                    let suffix = line.get(i + n + 1..).unwrap_or("");
-
-                    sum += if prefix.len() < suffix.len() {
-                        mul(count(memo, prefix, ns1), || count(memo, suffix, ns2))
-                    } else {
-                        mul(count(memo, suffix, ns2), || count(memo, prefix, ns1))
-                    };
-                }
+        for ch in line.chars() {
+            let mut next = HashMap::new();
+            for ((munch, ni), count) in states.drain() {
+                let state = match (ch, munch) {
+                    ('#', Some(0)) => continue,
+                    ('#' | '?', Some(x)) if x > 0 => (Some(x - 1), ni),
+                    ('#', None) if ni < ns.len() => (Some(ns[ni] - 1), ni + 1),
+                    ('.' | '?', Some(0)) => (None, ni),
+                    ('.', Some(x)) if x > 0 => continue,
+                    ('.', None) => (None, ni),
+                    ('?', None) => {
+                        if ni < ns.len() {
+                            *next.entry((Some(ns[ni] - 1), ni + 1)).or_default() += count;
+                        }
+                        (None, ni) // as period
+                    }
+                    _ => continue,
+                };
+                *next.entry(state).or_default() += count;
             }
+            std::mem::swap(&mut states, &mut next);
         }
 
-        // memo.insert((line, ns), sum);
-        sum
+        let valid = |(munch, ni)| matches!(munch, None | Some(0)) && ni == ns.len();
+        states
+            .iter()
+            .filter_map(|(state, count)| valid(*state).then_some(*count))
+            .sum()
     }
 
-    let input: Vec<_> = input
-        .lines()
-        .map(|line| {
-            let (line, nums) = line.split_once(' ').unwrap();
-            let nums = v![n.parse::<usize>().unwrap(), for n in nums.split(',')];
-            let (mut line2, mut nums2) = (String::new(), vec![]);
-            for i in 0..5 {
-                line2.push_str(line);
-                if i < 4 {
-                    line2.push('?');
-                }
-                nums2.extend_from_slice(&nums);
-            }
-            (line, nums, line2, nums2)
-        })
-        .collect();
-
     let (mut part1, mut part2) = (0, 0);
-    let memo = &mut Memo::default();
-    for (line, nums, line2, nums2) in &input {
-        part1 += count(memo, line, nums);
-        part2 += count(memo, line2, nums2);
+    for line in input.lines() {
+        let (line, nums) = line.split_once(' ').unwrap();
+        let nums = v![n.parse::<usize>().unwrap(), for n in nums.split(',')];
+        let (mut line2, mut nums2) = (line.to_owned(), nums.to_owned());
+        for _ in 0..4 {
+            line2.push('?');
+            line2.push_str(line);
+            nums2.extend_from_slice(&nums);
+        }
+        part1 += count(line, &nums);
+        part2 += count(&line2, &nums2);
     }
 
     assert_eq!(part1, 7204);
     assert_eq!(part2, 1672318386674);
 }
 
-#[test]
 fn day13() {
     let input = load_file("13.txt");
 
