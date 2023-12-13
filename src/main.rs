@@ -777,36 +777,32 @@ fn day12() {
     let input = load_file("12.txt");
 
     fn count(line: &str, ns: &[usize]) -> usize {
-        let line = line.trim_matches('.');
-
         type State = (Option<usize>, usize); // munch, ns_index
         let mut states: HashMap<State, usize> = HashMap::new();
+        let mut next = HashMap::new();
         states.insert((None, 0), 1);
 
         for ch in line.chars() {
-            let mut next = HashMap::new();
-            for ((munch, ni), count) in states.drain() {
-                let state = match (ch, munch) {
-                    ('#', Some(0)) => continue,
-                    ('#' | '?', Some(x)) if x > 0 => (Some(x - 1), ni),
-                    ('#', None) if ni < ns.len() => (Some(ns[ni] - 1), ni + 1),
-                    ('.' | '?', Some(0)) => (None, ni),
-                    ('.', Some(x)) if x > 0 => continue,
-                    ('.', None) => (None, ni),
-                    ('?', None) => {
-                        if ni < ns.len() {
-                            *next.entry((Some(ns[ni] - 1), ni + 1)).or_default() += count;
+            for ((munch, i), count) in states.drain() {
+                let mut add_state = |m, i| *next.entry((m, i)).or_default() += count;
+                match (munch, ch) {
+                    (Some(0), '.' | '?') => add_state(None, i),
+                    (Some(x), '?' | '#') if x > 0 => add_state(Some(x - 1), i),
+                    (Some(_), _) => continue,
+                    (None, _) => {
+                        if matches!(ch, '.' | '?') {
+                            add_state(None, i)
                         }
-                        (None, ni) // as period
+                        if matches!(ch, '?' | '#') && i < ns.len() {
+                            add_state(Some(ns[i] - 1), i + 1)
+                        }
                     }
-                    _ => continue,
-                };
-                *next.entry(state).or_default() += count;
+                }
             }
             std::mem::swap(&mut states, &mut next);
         }
 
-        let valid = |(munch, ni)| matches!(munch, None | Some(0)) && ni == ns.len();
+        let valid = |(munch, i)| matches!(munch, None | Some(0)) && i == ns.len();
         states
             .iter()
             .filter_map(|(state, count)| valid(*state).then_some(*count))
