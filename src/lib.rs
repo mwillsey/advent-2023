@@ -761,168 +761,96 @@ fn day11() {
 
 #[test]
 fn day12() {
-    //     let input = "
-    // ???.### 1,1,3
-    // .??..??...?##. 1,1,3
-    // ?#?#?#?#?#?#?#? 1,3,1,6
-    // ????.#...#... 4,1,1
-    // ????.######..#####. 1,6,5
-    // ?###???????? 3,2,1"
-    //         .trim();
+    let input = "
+???.### 1,1,3
+.??..??...?##. 1,1,3
+?#?#?#?#?#?#?#? 1,3,1,6
+????.#...#... 4,1,1
+????.######..#####. 1,6,5
+?###???????? 3,2,1"
+        .trim();
     let input = load_file("12.txt");
 
-    fn is_valid(line: &[u8], mut ns: &[usize]) -> bool {
-        let mut run = 0;
-        for &b in line {
-            if b == b'#' {
-                run += 1;
-            } else {
-                if run > 0 {
-                    if ns.is_empty() || run != ns[0] {
-                        return false;
-                    }
-                    ns = &ns[1..];
-                }
-                run = 0;
-            }
-        }
+    type Memo<'a> = HashMap<(&'a str, &'a [usize]), usize>;
 
-        if run > 0 {
-            ns == [run]
-        } else {
-            ns.is_empty()
-        }
-    }
+    fn count<'a>(memo: &mut Memo<'a>, line: &'a str, ns: &'a [usize]) -> usize {
+        let line = line.trim_matches('.');
 
-    // fn count(line: &[u8], ns: &[usize]) -> usize {
-    //     if ns.is_empty() {
-    //         return line.iter().all(|&b| b == b'.') as usize;
-    //     }
-
-    //     let mut run = 0;
-    //     for (i, &b) in line.iter().enumerate() {
-    //         if b != b'.' {
-    //             run += 1;
-    //         } else {
-    //             run = 0;
-    //         }
-
-    //         let tail = &line[i + 1..].iter().take_while(|&&b| b == b'#').count();
-
-    //         if run == ns[0] {
-    //             let next_i = line.len().min(i + 2); // leave a gap
-    //             let take_run = count(&line[next_i..], &ns[1..]);
-    //             let dont_take_run = count(&line[i + 1..], ns);
-    //             return take_run + dont_take_run;
-    //         }
-    //     }
-
-    //     0
-    // }
-
-    fn count(line: &[u8], ns: &[usize]) -> usize {
-        let first_pos = line.iter().position(|&b| b != b'.').unwrap_or(line.len());
-        let line = &line[first_pos..];
+        // if let Some(&result) = memo.get(&(line, ns)) {
+        //     return result;
+        // }
+        // if ns.len() == 1 && ns[0] == line.len() {
+        //     return (line.len() == ns[0] && line.chars().all(|b| b != '.')) as usize;
+        // }
 
         if ns.is_empty() {
-            return line.iter().all(|&b| b != b'#') as usize;
+            return line.chars().all(|b| b != '#') as usize;
         }
 
         if line.len() + 1 < ns.iter().sum::<usize>() + ns.len() {
             return 0;
         }
 
-        // can i place n here?
+        let (ns1, ns2) = ns.split_at(ns.len() / 2);
+        let (n, ns2) = ns2.split_first().unwrap();
+        let mut sum = 0;
 
-        let placements_here = if line[..ns[0]].iter().all(|&b| b != b'.') {
-            match line.get(ns[0]) {
-                Some(b'#') => 0,
-                Some(_) => count(&line[ns[0] + 1..], &ns[1..]),
-                None => {
-                    assert_eq!(line.len(), ns[0]);
-                    return (ns.len() == 1) as usize;
+        let get_char = |i: usize| line.as_bytes().get(i).map(|&b| b as char);
+        let is_chunk = |i: usize| {
+            line.get(i..i + n)
+                .map(|s| s.chars().all(|c| c != '.'))
+                .unwrap_or(false)
+                && get_char(i + n) != Some('#')
+        };
+        fn mul(x: usize, y: impl FnOnce() -> usize) -> usize {
+            (x > 0).then(|| x * y()).unwrap_or(0)
+        }
+
+        for (i, ch) in line.char_indices() {
+            let prev_i = i.wrapping_sub(1); // rely on overflow
+            let prev_char = get_char(prev_i).unwrap_or('.');
+            if let ('.' | '?', '?' | '#') = (prev_char, ch) {
+                if is_chunk(i) {
+                    let prefix = line.get(..i.wrapping_sub(1)).unwrap_or("");
+                    let suffix = line.get(i + n + 1..).unwrap_or("");
+
+                    sum += if prefix.len() < suffix.len() {
+                        mul(count(memo, prefix, ns1), || count(memo, suffix, ns2))
+                    } else {
+                        mul(count(memo, suffix, ns2), || count(memo, prefix, ns1))
+                    };
                 }
             }
-        } else {
-            0
-        };
+        }
 
-        let placements_not_here = if line[0] == b'#' {
-            0
-        } else {
-            count(&line[1..], ns)
-        };
-
-        let result = placements_here + placements_not_here;
-        // println!("{} {ns:?} = {result}", String::from_utf8_lossy(line));
-        result
+        // memo.insert((line, ns), sum);
+        sum
     }
 
-    // fn count(initial_line: &[u8], ns: &[usize]) -> usize {
-    //     let mut possible = vec![initial_line.to_owned()];
-    //     for i in 0..initial_line.len() {
-    //         let mut new_possible = vec![];
-    //         for line in possible.drain(..) {
-    //             if line[i] == b'?' {
-    //                 let (mut line1, mut line2) = (line.to_owned(), line);
-    //                 line1[i] = b'.';
-    //                 line2[i] = b'#';
-    //                 new_possible.extend([line1, line2]);
-    //             } else {
-    //                 new_possible.push(line);
-    //             }
-    //         }
-    //         std::mem::swap(&mut possible, &mut new_possible);
-    //     }
-
-    //     possible.retain(|line| is_valid(line, ns));
-
-    //     possible.len()
-    // }
-
-    // let (mut part1, mut part2) = (0, 0);
-    use rayon::prelude::*;
-    let results: Vec<_> = input
+    let input: Vec<_> = input
         .lines()
-        .collect::<Vec<_>>()
-        .par_iter()
         .map(|line| {
-            let (mut part1, mut part2) = (0, 0);
             let (line, nums) = line.split_once(' ').unwrap();
             let nums = v![n.parse::<usize>().unwrap(), for n in nums.split(',')];
-            part1 += count(line.as_bytes(), &nums);
-
             let (mut line2, mut nums2) = (String::new(), vec![]);
-            for _ in 0..5 {
+            for i in 0..5 {
                 line2.push_str(line);
+                if i < 4 {
+                    line2.push('?');
+                }
                 nums2.extend_from_slice(&nums);
             }
-
-            part2 += count(line2.as_bytes(), &nums2);
-
-            println!("{line} {nums:?}");
-            (part1, part2)
+            (line, nums, line2, nums2)
         })
         .collect();
 
-    let part1: usize = results.iter().map(|r| r.0).sum();
-    let part2: usize = results.iter().map(|r| r.1).sum();
-    // for line in input.lines() {
-    //     let (line, nums) = line.split_once(' ').unwrap();
-    //     let nums = v![n.parse::<usize>().unwrap(), for n in nums.split(',')];
-    //     part1 += count(line.as_bytes(), &nums);
-
-    //     let (mut line2, mut nums2) = (String::new(), vec![]);
-    //     for _ in 0..5 {
-    //         line2.push_str(line);
-    //         nums2.extend_from_slice(&nums);
-    //     }
-
-    //     part2 += count(line2.as_bytes(), &nums2);
-
-    //     println!("{line} {nums:?}");
-    // }
+    let (mut part1, mut part2) = (0, 0);
+    let memo = &mut Memo::default();
+    for (line, nums, line2, nums2) in &input {
+        part1 += count(memo, line, nums);
+        part2 += count(memo, line2, nums2);
+    }
 
     assert_eq!(part1, 7204);
-    assert_eq!(part2, 7204);
+    assert_eq!(part2, 1672318386674);
 }
