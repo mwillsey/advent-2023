@@ -44,7 +44,6 @@ pub enum Part {
 }
 pub use Part::*;
 
-#[allow(unused_macros)]
 macro_rules! v {
     (@iter $e:expr, for $p:pat in $l:expr $(, if $f:expr)?) => {{
         #[allow(unused_variables)]
