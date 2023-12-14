@@ -10,7 +10,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13,
+        day11, day12, day13, day14,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -878,4 +878,71 @@ fn day13() {
         }
         possible.into_iter().sum()
     }
+}
+
+fn day14() {
+    let input = load_file("14.txt");
+
+    let mut grid = v![l.as_bytes().to_owned(), for l in input.lines()];
+
+    fn slide_north(grid: &mut Vec<Vec<u8>>) {
+        let (width, height) = (grid[0].len(), grid.len());
+        for x in 0..width {
+            for y in 0..height {
+                if grid[y][x] == b'O' {
+                    if let Some(y2) = (0..y).rev().take_while(|&y| grid[y][x] == b'.').last() {
+                        grid[y][x] = b'.';
+                        grid[y2][x] = b'O';
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::needless_range_loop)]
+    fn rotate(grid: &[Vec<u8>]) -> Vec<Vec<u8>> {
+        let (width, height) = (grid[0].len(), grid.len());
+        let mut new_grid = vec![vec![b'.'; height]; width];
+        for x in 0..width {
+            for y in 0..height {
+                new_grid[x][height - y - 1] = grid[y][x]
+            }
+        }
+        new_grid
+    }
+
+    fn get_load(grid: &[Vec<u8>]) -> usize {
+        let count_row = |row: &[u8]| row.iter().filter(|&&ch| ch == b'O').count();
+        grid.iter()
+            .enumerate()
+            .map(|(y, row)| count_row(row) * (grid.len() - y))
+            .sum()
+    }
+
+    // part 1
+    let mut part1_grid = grid.clone();
+    slide_north(&mut part1_grid);
+    assert_eq!(105208, get_load(&part1_grid));
+
+    // part 2
+    let mut memo = HashMap::<Vec<Vec<u8>>, usize>::new();
+
+    let (cycle_start, period) = loop {
+        for _ in 0..4 {
+            slide_north(&mut grid);
+            grid = rotate(&grid);
+        }
+        let i = memo.len() + 1;
+        match memo.entry(grid.clone()) {
+            Entry::Vacant(e) => e.insert(i),
+            Entry::Occupied(e) => {
+                let cycle_start = *e.get();
+                break (cycle_start, i - cycle_start);
+            }
+        };
+    };
+
+    let i = (1_000_000_000 - cycle_start) % period + cycle_start;
+    let final_grid = memo.iter().find(|&(_, &j)| j == i).unwrap().0;
+    assert_eq!(102943, get_load(final_grid));
 }
