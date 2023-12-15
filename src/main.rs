@@ -1,3 +1,4 @@
+use core::num;
 use std::{
     collections::hash_map::Entry,
     collections::{HashMap, HashSet},
@@ -10,7 +11,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13, day14,
+        day11, day12, day13, day14, day15,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -944,4 +945,53 @@ fn day14() {
     let i = (1_000_000_000 - cycle_start) % period + cycle_start;
     let final_grid = memo.iter().find(|&(_, &j)| j == i).unwrap().0;
     assert_eq!(102943, get_load(final_grid));
+}
+
+fn day15() {
+    let input = load_file("15.txt");
+    let mut part1 = 0;
+    for line in input.lines() {
+        for instr in line.split(',') {
+            part1 += hash(instr);
+        }
+    }
+
+    fn hash(s: &str) -> usize {
+        let mut value = 0;
+        for &b in s.as_bytes() {
+            value += b as usize;
+            value *= 17;
+            value %= 256;
+        }
+        value
+    }
+
+    assert_eq!(part1, 509784);
+
+    // part 2
+    let mut map: Vec<Vec<(&str, usize)>> = vec![vec![]; 256];
+
+    for line in input.lines() {
+        for instr in line.split(',') {
+            let (label, num) = instr.split_once(['=', '-']).unwrap();
+            let i = hash(label);
+            if let Ok(num) = num.parse::<usize>() {
+                if let Some((_, spot)) = map[i].iter_mut().find(|(l, _)| l == &label) {
+                    *spot = num;
+                } else {
+                    map[i].push((label, num))
+                }
+            } else {
+                map[i].retain(|(l, _)| l != &label);
+            }
+        }
+    }
+
+    let mut part2 = 0;
+    for (i, bucket) in map.iter().enumerate() {
+        for (j, (_, num)) in bucket.iter().enumerate() {
+            part2 += (i + 1) * (j + 1) * num;
+        }
+    }
+    assert_eq!(part2, 230197);
 }
