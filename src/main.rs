@@ -1,4 +1,3 @@
-use core::num;
 use std::{
     collections::hash_map::Entry,
     collections::{HashMap, HashSet},
@@ -11,7 +10,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13, day14, day15,
+        day11, day12, day13, day14, day15, day16,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -949,21 +948,17 @@ fn day14() {
 
 fn day15() {
     let input = load_file("15.txt");
+
+    fn hash(s: &str) -> usize {
+        let hash_one = |n, &b| ((n + b as usize) * 17) % 256;
+        s.as_bytes().iter().fold(0usize, hash_one)
+    }
+
     let mut part1 = 0;
     for line in input.lines() {
         for instr in line.split(',') {
             part1 += hash(instr);
         }
-    }
-
-    fn hash(s: &str) -> usize {
-        let mut value = 0;
-        for &b in s.as_bytes() {
-            value += b as usize;
-            value *= 17;
-            value %= 256;
-        }
-        value
     }
 
     assert_eq!(part1, 509784);
@@ -994,4 +989,82 @@ fn day15() {
         }
     }
     assert_eq!(part2, 230197);
+}
+
+fn day16() {
+    let input = load_file("16.txt");
+
+    let grid = v![l.as_bytes(), for l in input.lines()];
+    type Pos = (i32, i32);
+
+    let get = |pos: Pos| grid.get(pos.0 as usize)?.get(pos.1 as usize).copied();
+    let add = |(a, b), (c, d)| (a + c, b + d);
+    let flip_x = |pos: Pos| (pos.0, -pos.1);
+
+    let slash = |dir| match dir {
+        (0, 1) => (-1, 0),
+        (0, -1) => (1, 0),
+        (1, 0) => (0, -1),
+        (-1, 0) => (0, 1),
+        _ => panic!(),
+    };
+
+    let energized = |start: Pos, dir: Pos| -> usize {
+        let mut todo: Vec<(Pos, Pos)> = vec![(start, dir)];
+        let mut seen = HashSet::<(Pos, Pos)>::new();
+
+        while let Some((pos, dir)) = todo.pop() {
+            let Some(ch) = get(pos) else {
+                continue;
+            };
+            if !seen.insert((pos, dir)) {
+                continue;
+            }
+
+            let mut go = |dir| todo.push((add(pos, dir), dir));
+            match ch {
+                b'.' => go(dir),
+                b'/' => go(slash(dir)),
+                b'\\' => go(flip_x(slash(flip_x(dir)))),
+                b'-' if dir.0 == 0 => go(dir),
+                b'-' => {
+                    go((0, 1));
+                    go((0, -1));
+                }
+                b'|' if dir.1 == 0 => go(dir),
+                b'|' => {
+                    go((1, 0));
+                    go((-1, 0));
+                }
+                _ => panic!(),
+            }
+        }
+
+        seen.into_iter()
+            .map(|(pos, _)| pos)
+            .collect::<HashSet<_>>()
+            .len()
+    };
+
+    assert_eq!(energized((0, 0), (0, 1)), 7996);
+
+    // part 2
+    let (height, width) = (grid.len() as i32, grid[0].len() as i32);
+    let mut max_energized = 0;
+    let mut compute = |start: Pos, dir: Pos| {
+        let e = energized(start, dir);
+        max_energized = max_energized.max(e);
+    };
+
+    for y in 0..height {
+        compute((y, 0), (0, 1));
+        compute((y, width - 1), (0, -1));
+    }
+
+    for x in 0..width {
+        compute((0, x), (1, 0));
+        compute((height - 1, x), (-1, 0));
+    }
+
+    assert_eq!(max_energized, 8239);
 }
