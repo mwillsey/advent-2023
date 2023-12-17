@@ -1089,37 +1089,34 @@ fn day17() {
         todo.push(Reverse((0, 0, (0, 0), (0, 1))));
         todo.push(Reverse((0, 0, (0, 0), (1, 0))));
 
-        'outer: while let Some(Reverse((dist, straight, pos, dir))) = todo.pop() {
-            for st in 1..=straight {
-                if st >= min_steps {
-                    if let Some(dist2) = best.get(&(pos, dir, st)) {
-                        if dist2 <= &dist {
-                            continue 'outer;
-                        }
-                    }
+        'todo: while let Some(Reverse((dist, straight, pos, dir))) = todo.pop() {
+            for st in min_steps..=straight {
+                let dist2 = best.get(&(pos, dir, st)).unwrap_or(&usize::MAX);
+                if dist2 <= &dist {
+                    continue 'todo;
                 }
             }
             best.insert((pos, dir, straight), dist);
             // println!("{pos:?} {dir:?} {straight} {dist}");
 
+            let mut take_step = |dir, straight| {
+                let pos2 = add(pos, dir);
+                if let Some(cost) = get(pos2) {
+                    todo.push(Reverse((dist + cost, straight, pos2, dir)));
+                }
+            };
+
             if straight >= min_steps {
-                let turns = match dir {
-                    (0, _) => [(1, 0), (-1, 0)],
-                    (_, 0) => [(0, 1), (0, -1)],
-                    (_, _) => panic!(),
-                };
-                for turn in turns {
-                    let pos2 = add(pos, turn);
-                    if let Some(cost) = get(pos2) {
-                        todo.push(Reverse((dist + cost, 1, pos2, turn)));
-                    }
+                if dir.0 == 0 {
+                    take_step((1, 0), 1);
+                    take_step((-1, 0), 1);
+                } else {
+                    take_step((0, 1), 1);
+                    take_step((0, -1), 1);
                 }
             }
             if straight < max_steps {
-                let pos2 = add(pos, dir);
-                if let Some(cost) = get(pos2) {
-                    todo.push(Reverse((dist + cost, straight + 1, pos2, dir)));
-                }
+                take_step(dir, straight + 1);
             }
         }
 
