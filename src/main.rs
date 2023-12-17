@@ -1071,19 +1071,6 @@ fn day16() {
 }
 
 fn day17() {
-    let input = "2413432311323
-3215453535623
-3255245654254
-3446585845452
-4546657867536
-1438598798454
-4457876987766
-3637877979653
-4654967986887
-4564679986453
-1224686865563
-2546548887735
-4322674655533";
     let input = load_file("17.txt");
 
     let grid = v![ v![ n.to_digit(10).unwrap() as usize, for n in l.chars() ],
@@ -1095,51 +1082,56 @@ fn day17() {
     let get = |pos: Pos| grid.get(pos.0 as usize)?.get(pos.1 as usize).copied();
     let add = |(a, b), (c, d)| (a + c, b + d);
 
-    let mut todo = BinaryHeap::<Reverse<(usize, usize, Pos, Pos)>>::new();
-    let mut best = HashMap::<(Pos, Pos, usize), usize>::new();
-    // let mut todo = vec![(0, 0, 0, 0)];
+    let solve = |min_steps, max_steps| -> usize {
+        let mut todo = BinaryHeap::<Reverse<(usize, usize, Pos, Pos)>>::new();
+        let mut best = HashMap::<(Pos, Pos, usize), usize>::new();
 
-    todo.push(Reverse((0, 0, (0, 0), (0, 1))));
-    todo.push(Reverse((0, 0, (0, 0), (1, 0))));
+        todo.push(Reverse((0, 0, (0, 0), (0, 1))));
+        todo.push(Reverse((0, 0, (0, 0), (1, 0))));
 
-    'outer: while let Some(Reverse((dist, straight, pos, dir))) = todo.pop() {
-        for st in 1..=straight {
-            if let Some(dist2) = best.get(&(pos, dir, st)) {
-                if dist2 <= &dist {
-                    continue 'outer;
+        'outer: while let Some(Reverse((dist, straight, pos, dir))) = todo.pop() {
+            for st in 1..=straight {
+                if st >= min_steps {
+                    if let Some(dist2) = best.get(&(pos, dir, st)) {
+                        if dist2 <= &dist {
+                            continue 'outer;
+                        }
+                    }
                 }
             }
-            //  else {
-            //     best.insert((pos, dir, st), dist);
-            // }
-        }
-        if let Some(dist2) = best.insert((pos, dir, straight), dist) {
-            assert!(dist2 > dist, "{dist2} !> {dist}");
-        }
-        println!("{pos:?} {dir:?} {straight} {dist}");
+            best.insert((pos, dir, straight), dist);
+            // println!("{pos:?} {dir:?} {straight} {dist}");
 
-        let turns = match dir {
-            (0, _) => [(1, 0), (-1, 0)],
-            (_, 0) => [(0, 1), (0, -1)],
-            (_, _) => panic!(),
-        };
-        for turn in turns {
-            let pos2 = add(pos, turn);
-            if let Some(cost) = get(pos2) {
-                todo.push(Reverse((dist + cost, 1, pos2, turn)));
+            if straight >= min_steps {
+                let turns = match dir {
+                    (0, _) => [(1, 0), (-1, 0)],
+                    (_, 0) => [(0, 1), (0, -1)],
+                    (_, _) => panic!(),
+                };
+                for turn in turns {
+                    let pos2 = add(pos, turn);
+                    if let Some(cost) = get(pos2) {
+                        todo.push(Reverse((dist + cost, 1, pos2, turn)));
+                    }
+                }
+            }
+            if straight < max_steps {
+                let pos2 = add(pos, dir);
+                if let Some(cost) = get(pos2) {
+                    todo.push(Reverse((dist + cost, straight + 1, pos2, dir)));
+                }
             }
         }
-        if straight < 3 {
-            let pos2 = add(pos, dir);
-            if let Some(cost) = get(pos2) {
-                todo.push(Reverse((dist + cost, straight + 1, pos2, dir)));
+
+        let mut best_dist = usize::MAX;
+        for ((pos, _dir, straight), dist) in best {
+            if pos == goal && straight >= min_steps {
+                best_dist = best_dist.min(dist);
             }
         }
-    }
+        best_dist
+    };
 
-    for ((pos, dir, straight), dist) in best {
-        if pos == goal {
-            println!("done: {pos:?} {dir:?} {straight} {dist}");
-        }
-    }
+    assert_eq!(solve(1, 3), 847);
+    assert_eq!(solve(4, 10), 997);
 }
