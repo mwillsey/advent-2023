@@ -11,7 +11,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13, day14, day15, day16, day17,
+        day11, day12, day13, day14, day15, day16, day17, day18,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -1131,4 +1131,40 @@ fn day17() {
 
     assert_eq!(solve(1, 3), 847);
     assert_eq!(solve(4, 10), 997);
+}
+
+fn day18() {
+    let input = load_file("18.txt");
+
+    let solve = |part1| {
+        let mut perimeter = 0;
+        let mut area = 0;
+        let mut y = 0i64;
+        for line in input.lines() {
+            let (dir, steps) = if part1 {
+                let (dir, line) = line.split_once(' ').unwrap();
+                let (steps, _) = line.split_once(' ').unwrap();
+                let steps = steps.parse::<i64>().unwrap();
+                (dir, steps)
+            } else {
+                let hex = line.split_once('#').unwrap().1;
+                let steps = i64::from_str_radix(&hex[0..5], 16).unwrap();
+                let dir = &hex[5..6];
+                (dir, steps)
+            };
+
+            match dir {
+                "0" | "R" => area += y * steps,
+                "2" | "L" => area -= y * steps,
+                "3" | "U" => y -= steps,
+                "1" | "D" => y += steps,
+                _ => panic!(),
+            }
+            perimeter += steps;
+        }
+        area.abs() + perimeter / 2 + 1
+    };
+
+    assert_eq!(solve(true), 40745);
+    assert_eq!(solve(false), 90111113594927);
 }
