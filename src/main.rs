@@ -1170,24 +1170,6 @@ fn day18() {
 }
 
 fn day19() {
-    let input = "px{a<2006:qkq,m>2090:A,rfg}
-pv{a>1716:R,A}
-lnx{m>1548:A,A}
-rfg{s<537:gd,x>2440:R,A}
-qs{s>3448:A,lnx}
-qkq{x<1416:A,crn}
-crn{x>2662:A,R}
-in{s<1351:px,qqz}
-qqz{s>2770:qs,m<1801:hdj,R}
-gd{a>3333:R,R}
-hdj{m>838:A,pv}
-
-{x=787,m=2655,a=1222,s=2876}
-{x=1679,m=44,a=2067,s=496}
-{x=2036,m=264,a=79,s=2244}
-{x=2461,m=1339,a=466,s=291}
-{x=2127,m=1623,a=2188,s=1013}";
-
     let input = load_file("19.txt");
 
     type Workflow<'a> = (Vec<Instr<'a>>, &'a str);
@@ -1256,15 +1238,15 @@ hdj{m>838:A,pv}
     fn possible<'a>(
         name: &str,
         workflows: &HashMap<&str, Workflow<'a>>,
-        true_instrs: Vec<Instr<'a>>,
-        mut false_instrs: Vec<Instr<'a>>,
+        true_instrs: &[Instr<'a>],
+        false_instrs: &[Instr<'a>],
     ) -> usize {
         if name == "R" {
             return 0;
         } else if name == "A" {
             let mut possible = [[true; 4000]; 4];
 
-            for (i, op, n, _) in &true_instrs {
+            for (i, op, n, _) in true_instrs {
                 let n = *n - 1;
                 match *op {
                     "=" => {
@@ -1277,7 +1259,7 @@ hdj{m>838:A,pv}
                 }
             }
 
-            for (i, op, n, _) in &false_instrs {
+            for (i, op, n, _) in false_instrs {
                 let n = *n - 1;
                 match *op {
                     "=" => possible[*i][n] = false,
@@ -1296,28 +1278,15 @@ hdj{m>838:A,pv}
 
         let (instrs, default) = &workflows[name];
         let mut count = 0;
-        let push = |v: Vec<Instr<'a>>, x| {
-            let mut v = v.clone();
-            v.push(x);
-            v
-        };
+        let mut true_instrs = true_instrs.to_owned();
+        let mut false_instrs = false_instrs.to_owned();
         for instr @ (_, _, _, dest) in instrs {
-            count += possible(
-                dest,
-                workflows,
-                push(true_instrs.clone(), *instr),
-                false_instrs.clone(),
-            );
-            false_instrs.push(*instr);
+            true_instrs.push(*instr);
+            count += possible(dest, workflows, &true_instrs, &false_instrs);
+            false_instrs.push(true_instrs.pop().unwrap());
         }
-        count += possible(
-            default,
-            workflows,
-            true_instrs.clone(),
-            false_instrs.clone(),
-        );
-        count
+        count + possible(default, workflows, &true_instrs, &false_instrs)
     }
 
-    assert_eq!(possible("in", &workflows, vec![], vec![]), 134343280273968);
+    assert_eq!(possible("in", &workflows, &[], &[]), 134343280273968);
 }
