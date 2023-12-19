@@ -1190,10 +1190,10 @@ hdj{m>838:A,pv}
 
     let input = load_file("19.txt");
 
-    let mut workflows = HashMap::<&str, (Vec<Instr>, &str)>::new();
-    let mut lines = input.lines();
-
+    type Workflow<'a> = (Vec<Instr<'a>>, &'a str);
     type Instr<'a> = (usize, &'a str, usize, &'a str);
+    let mut workflows = HashMap::<&str, Workflow>::new();
+    let mut lines = input.lines();
 
     for line in &mut lines {
         if line.is_empty() {
@@ -1219,7 +1219,6 @@ hdj{m>838:A,pv}
     let mut part1 = 0;
 
     'line: for line in lines {
-        println!("{line}");
         let line = line.trim_start_matches('{').trim_end_matches('}');
         let part: Vec<usize> = line
             .split(',')
@@ -1253,4 +1252,72 @@ hdj{m>838:A,pv}
     }
 
     assert_eq!(part1, 532551);
+
+    fn possible<'a>(
+        name: &str,
+        workflows: &HashMap<&str, Workflow<'a>>,
+        true_instrs: Vec<Instr<'a>>,
+        mut false_instrs: Vec<Instr<'a>>,
+    ) -> usize {
+        if name == "R" {
+            return 0;
+        } else if name == "A" {
+            let mut possible = [[true; 4000]; 4];
+
+            for (i, op, n, _) in &true_instrs {
+                let n = *n - 1;
+                match *op {
+                    "=" => {
+                        possible[*i][n..].fill(false);
+                        possible[*i][..n].fill(false);
+                    }
+                    "<" => possible[*i][n..].fill(false),
+                    ">" => possible[*i][..=n].fill(false),
+                    _ => panic!(),
+                }
+            }
+
+            for (i, op, n, _) in &false_instrs {
+                let n = *n - 1;
+                match *op {
+                    "=" => possible[*i][n] = false,
+                    "<" => possible[*i][0..n].fill(false),
+                    ">" => possible[*i][n + 1..].fill(false),
+                    _ => panic!(),
+                }
+            }
+
+            let mut count = 1;
+            for row in possible {
+                count *= row.iter().filter(|b| **b).count();
+            }
+            return count;
+        }
+
+        let (instrs, default) = &workflows[name];
+        let mut count = 0;
+        let push = |v: Vec<Instr<'a>>, x| {
+            let mut v = v.clone();
+            v.push(x);
+            v
+        };
+        for instr @ (_, _, _, dest) in instrs {
+            count += possible(
+                dest,
+                workflows,
+                push(true_instrs.clone(), *instr),
+                false_instrs.clone(),
+            );
+            false_instrs.push(*instr);
+        }
+        count += possible(
+            default,
+            workflows,
+            true_instrs.clone(),
+            false_instrs.clone(),
+        );
+        count
+    }
+
+    assert_eq!(possible("in", &workflows, vec![], vec![]), 134343280273968);
 }
