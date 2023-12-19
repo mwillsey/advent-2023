@@ -11,7 +11,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13, day14, day15, day16, day17, day18,
+        day11, day12, day13, day14, day15, day16, day17, day18, day19,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -1167,4 +1167,90 @@ fn day18() {
 
     assert_eq!(solve(true), 40745);
     assert_eq!(solve(false), 90111113594927);
+}
+
+fn day19() {
+    let input = "px{a<2006:qkq,m>2090:A,rfg}
+pv{a>1716:R,A}
+lnx{m>1548:A,A}
+rfg{s<537:gd,x>2440:R,A}
+qs{s>3448:A,lnx}
+qkq{x<1416:A,crn}
+crn{x>2662:A,R}
+in{s<1351:px,qqz}
+qqz{s>2770:qs,m<1801:hdj,R}
+gd{a>3333:R,R}
+hdj{m>838:A,pv}
+
+{x=787,m=2655,a=1222,s=2876}
+{x=1679,m=44,a=2067,s=496}
+{x=2036,m=264,a=79,s=2244}
+{x=2461,m=1339,a=466,s=291}
+{x=2127,m=1623,a=2188,s=1013}";
+
+    let input = load_file("19.txt");
+
+    let mut workflows = HashMap::<&str, (Vec<Instr>, &str)>::new();
+    let mut lines = input.lines();
+
+    type Instr<'a> = (usize, &'a str, usize, &'a str);
+
+    for line in &mut lines {
+        if line.is_empty() {
+            break;
+        }
+        let (name, rest) = line.split_once('{').unwrap();
+        let mut instrs: Vec<Instr> = vec![];
+        let mut default = "";
+        for s in rest.trim_end_matches('}').split(',') {
+            if let Some((instr, dest)) = s.split_once(':') {
+                let i = "xmas".find(&instr[0..1]).unwrap();
+                let n = instr[2..].parse::<usize>().unwrap();
+                instrs.push((i, &instr[1..2], n, dest));
+            } else {
+                default = s;
+                break;
+            }
+        }
+
+        workflows.insert(name, (instrs, default));
+    }
+
+    let mut part1 = 0;
+
+    'line: for line in lines {
+        println!("{line}");
+        let line = line.trim_start_matches('{').trim_end_matches('}');
+        let part: Vec<usize> = line
+            .split(',')
+            .map(|p| p.split_once('=').unwrap().1.parse().unwrap())
+            .collect();
+
+        let mut name = "in";
+        'outer: loop {
+            if name == "A" {
+                part1 += part.iter().sum::<usize>();
+                continue 'line;
+            } else if name == "R" {
+                continue 'line;
+            }
+
+            let (instrs, default) = &workflows[name];
+            for (i, op, n, dest) in instrs {
+                let cond = match *op {
+                    "=" => part[*i] == *n,
+                    "<" => part[*i] < *n,
+                    ">" => part[*i] > *n,
+                    _ => panic!(),
+                };
+                if cond {
+                    name = dest;
+                    continue 'outer;
+                }
+            }
+            name = default;
+        }
+    }
+
+    assert_eq!(part1, 532551);
 }
