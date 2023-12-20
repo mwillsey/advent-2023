@@ -1,6 +1,6 @@
 use std::{
     cmp::Reverse,
-    collections::hash_map::Entry,
+    collections::{hash_map::Entry, VecDeque},
     collections::{BinaryHeap, HashMap, HashSet},
     io::Write,
     ops::Range,
@@ -11,7 +11,7 @@ use std::{
 pub fn main() {
     let days = [
         day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, //
-        day11, day12, day13, day14, day15, day16, day17, day18, day19,
+        day11, day12, day13, day14, day15, day16, day17, day18, day19, day20,
     ];
     let args: Vec<usize> = std::env::args()
         .skip(1)
@@ -1289,4 +1289,79 @@ fn day19() {
     }
 
     assert_eq!(possible("in", &workflows, &[], &[]), 134343280273968);
+}
+
+fn day20() {
+    let input = load_file("20.txt");
+
+    let mut inputs: HashMap<&str, HashMap<&str, bool>> = Default::default();
+    let mut modules: HashMap<&str, (char, &str, bool)> = Default::default();
+    for line in input.lines() {
+        let (name, outputs) = line.split_once(" -> ").unwrap();
+        let (ty, name) = match name.split_at(1) {
+            ("%", name) => ('%', name),
+            ("&", name) => ('&', name),
+            _ => ('b', name),
+        };
+        modules.insert(name, (ty, outputs, false));
+        // print!("{name} -> {{");
+        for s in outputs.split(", ") {
+            // print!(" {s} ");
+            inputs.entry(s).or_default().insert(name, false);
+        }
+        // println!("}}")
+    }
+
+    let mut periods_of_inputs_to_final: HashMap<&str, usize> = {
+        let next_to_last = inputs["rx"].keys().next().unwrap();
+        inputs[next_to_last].keys().map(|k| (*k, 0)).collect()
+    };
+
+    let mut part1 = 0;
+    let (mut n_hi, mut n_lo) = (0, 0);
+    'outer: for i in 0..100000000 {
+        if i == 1000 {
+            part1 = n_hi * n_lo;
+        }
+        let mut pulses = VecDeque::from([("button", "broadcaster", false)]);
+        while let Some((src, dst, pulse)) = pulses.pop_front() {
+            if pulse {
+                n_hi += 1;
+            } else {
+                n_lo += 1;
+            }
+
+            if periods_of_inputs_to_final.contains_key(&src) && pulse {
+                periods_of_inputs_to_final.entry(src).or_insert(i + 1);
+                if periods_of_inputs_to_final.values().all(|&x| x > 0) {
+                    break 'outer;
+                }
+            }
+
+            let Some((typ, outputs, state)) = modules.get_mut(dst) else {
+                continue;
+            };
+            let out_pulse = match typ {
+                'b' => false,
+                '%' if pulse => continue,
+                '%' => {
+                    *state = !*state;
+                    *state
+                }
+                '&' => {
+                    let inputs = inputs.get_mut(dst).unwrap();
+                    inputs.insert(src, pulse);
+                    !inputs.iter().all(|(_, b)| *b)
+                }
+                _ => panic!(),
+            };
+            for output in outputs.split(", ") {
+                pulses.push_back((dst, output, out_pulse));
+            }
+        }
+    }
+
+    assert_eq!(part1, 861743850);
+    let part2 = lcm(&v![p, for (_, p) in periods_of_inputs_to_final]);
+    assert_eq!(part2, 247023644760071)
 }
