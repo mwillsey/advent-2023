@@ -1312,10 +1312,9 @@ fn day20() {
         // println!("}}")
     }
 
-    let mut periods_of_inputs_to_final: HashMap<&str, usize> = {
-        let next_to_last = inputs["rx"].keys().next().unwrap();
-        inputs[next_to_last].keys().map(|k| (*k, 0)).collect()
-    };
+    let next_to_last = inputs["rx"].keys().next().unwrap();
+    let inputs_to_final: Vec<&str> = inputs[next_to_last].keys().copied().collect();
+    let mut periods: HashMap<&str, usize> = Default::default();
 
     let mut part1 = 0;
     let (mut n_hi, mut n_lo) = (0, 0);
@@ -1331,9 +1330,9 @@ fn day20() {
                 n_lo += 1;
             }
 
-            if periods_of_inputs_to_final.contains_key(&src) && pulse {
-                periods_of_inputs_to_final.entry(src).or_insert(i + 1);
-                if periods_of_inputs_to_final.values().all(|&x| x > 0) {
+            if inputs_to_final.contains(&src) && pulse {
+                periods.entry(src).or_insert(i + 1);
+                if periods.len() == inputs_to_final.len() {
                     break 'outer;
                 }
             }
@@ -1362,6 +1361,6 @@ fn day20() {
     }
 
     assert_eq!(part1, 861743850);
-    let part2 = lcm(&v![p, for (_, p) in periods_of_inputs_to_final]);
+    let part2 = lcm(&v![p, for (_, p) in periods]);
     assert_eq!(part2, 247023644760071)
 }
